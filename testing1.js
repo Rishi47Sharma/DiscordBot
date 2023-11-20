@@ -1,6 +1,10 @@
 require("dotenv").config();
+const axios = require("axios");
+const cohereApiUrl = "https://api.cohere.ai/v1/chat";
+const cohereApiToken = process.env.COHERE_TOKEN // Replace with your actual API token
 
 // Discord.js versions ^13.0 require us to explicitly define client intents
+
 const { Client, GatewayIntentBits } = require("discord.js");
 const client = new Client({
   intents: [
@@ -15,7 +19,9 @@ client.on("ready", () => {
 });
 
 // Log In our bot
+
 client.login(process.env.CLIENT_TOKEN);
+let isChatting = false;
 
 client.on("messageCreate", (msg) => {
   // You can view the msg object here with console.log(msg)
@@ -23,4 +29,80 @@ client.on("messageCreate", (msg) => {
   if (msg.content === "Hello") {
     msg.reply(`Hello ${msg.author.username}`);
   }
+
+  if (msg.content.toLowerCase() === "help" && !isChatting) {
+    isChatting = true;
+    msg.reply(
+      "Hello! I'm here to assist you. Feel free to ask me anything. Type 'exit' to stop."
+    );
+    return; // Do not proceed to chatReply immediately
+  }
+
+  if (isChatting && msg.content.toLowerCase() !== "exit") {
+    chatReply(msg.content)
+      .then((reply) => {
+        if (reply.length < 2000) {
+          msg.reply(reply);
+        } else {
+          msg.reply("I am sorry, I am not that smart yet. Please try again.");
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+    return; // Do not proceed further after chatReply
+  }
+
+  if (msg.content.toLowerCase() === "exit") {
+    isChatting = false;
+    msg.reply(
+      "Exiting chat. If you need assistance, feel free to type 'help' again."
+    );
+  }
 });
+
+const chatReply = async (msg) => {
+  const requestData = {
+    model: "command",
+    message: msg,
+    temperature: 0.3,
+    chat_history: [],
+    prompt_truncation: "auto",
+    stream: true,
+    citation_quality: "accurate",
+    connectors: [],
+    documents: [],
+  };
+
+  const headers = {
+    Authorization: `Bearer ${cohereApiToken}`,
+    "Content-Type": "application/json",
+  };
+
+  try {
+    console.log("Cohere API Reques");
+    const response = await axios.post(cohereApiUrl, requestData, { headers });
+
+    const dataObjects = response.data
+      .split("\n")
+      .filter(Boolean)
+      .map(JSON.parse);
+
+    // Access the last object in the array
+    const lastObject = dataObjects[dataObjects.length - 1];
+
+    return lastObject?.response?.text;
+  } catch (error) {
+    throw new Error(`Cohere API request failed: ${error.message}`);
+  }
+};
+
+const messageToCohere = "Hello, Cohere!";
+chatReply(messageToCohere)
+  .then((apiResponse) => {
+    console.log("Cohere API Response:", apiResponse);
+  })
+  .catch((error) => {
+    console.error("hey beedu");
+    console.error(error.message);
+  });
