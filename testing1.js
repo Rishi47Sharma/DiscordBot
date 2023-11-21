@@ -1,7 +1,7 @@
 require("dotenv").config();
 const axios = require("axios");
 const cohereApiUrl = "https://api.cohere.ai/v1/chat";
-const cohereApiToken = process.env.COHERE_TOKEN // Replace with your actual API token
+const cohereApiToken = process.env.COHERE_TOKEN; // Replace with your actual API token
 
 // Discord.js versions ^13.0 require us to explicitly define client intents
 
@@ -30,7 +30,7 @@ client.on("messageCreate", (msg) => {
     msg.reply(`Hello ${msg.author.username}`);
   }
 
-  if (msg.content.toLowerCase() === "help" && !isChatting) {
+  if (msg.content === "/jarvis" && !isChatting) {
     isChatting = true;
     msg.reply(
       "Hello! I'm here to assist you. Feel free to ask me anything. Type 'exit' to stop."
@@ -38,18 +38,24 @@ client.on("messageCreate", (msg) => {
     return; // Do not proceed to chatReply immediately
   }
 
-  if (isChatting && msg.content.toLowerCase() !== "exit") {
-    chatReply(msg.content)
-      .then((reply) => {
-        if (reply.length < 2000) {
-          msg.reply(reply);
-        } else {
-          msg.reply("I am sorry, I am not that smart yet. Please try again.");
-        }
-      })
-      .catch((error) => {
-        console.log(error);
-      });
+  while (isChatting && msg.content.toLowerCase() !== "exit") {
+    if (msg.author.bot) {
+      return; // Ignore messages from bots
+    } // Ignore messages from bots
+    else {
+      chatReply(msg.content)
+        .then((reply) => {
+          if (reply.length < 2000) {
+            msg.reply(reply);
+          } else {
+            msg.reply("I am sorry, I am not that smart yet. Please try again.");
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
+
     return; // Do not proceed further after chatReply
   }
 
@@ -63,9 +69,9 @@ client.on("messageCreate", (msg) => {
 
 const chatReply = async (msg) => {
   const requestData = {
-    model: "command",
+    model: "command-light-nightly",
     message: msg,
-    temperature: 0.3,
+    temperature: 0.1,
     chat_history: [],
     prompt_truncation: "auto",
     stream: true,
@@ -103,6 +109,5 @@ chatReply(messageToCohere)
     console.log("Cohere API Response:", apiResponse);
   })
   .catch((error) => {
-    console.error("hey beedu");
     console.error(error.message);
   });
